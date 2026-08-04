@@ -104,7 +104,7 @@ function seedIfEmpty(database: Database.Database) {
     "Participá por un kit SANTICAZA con óptica térmica, rifle PCP y accesorios seleccionados de nuestra armería.",
     "2026-09-15T22:00:00-03:00",
     10000,
-    "https://www.youtube.com/embed/dQw4w9WgXcQ",
+    null,
     "/images/premio-kit.jpg",
   );
 

@@ -161,21 +161,13 @@ export function PurchasePanel({ packages }: Props) {
               placeholder="12345678"
               required
             />
-            <div>
-              <label className="label" htmlFor="birthDate">
-                Fecha de nacimiento
-              </label>
-              <input
-                id="birthDate"
-                type="date"
-                className="field"
-                value={form.birthDate}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, birthDate: e.target.value }))
-                }
-                required
-              />
-            </div>
+            <Field
+              label="Fecha de nacimiento"
+              value={form.birthDate}
+              onChange={(v) => setForm((f) => ({ ...f, birthDate: v }))}
+              placeholder="DD/MM/AAAA"
+              required
+            />
             <Field
               label="Email"
               type="email"

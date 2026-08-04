@@ -90,9 +90,9 @@ export default function HomePage() {
         </div>
 
         <div className="mt-8 grid gap-4 md:grid-cols-2">
-          <div className="overflow-hidden rounded-2xl border border-border bg-bg-panel">
-            {raffle.videoUrl ? (
-              <div className="relative aspect-[9/16] max-h-[520px] w-full md:aspect-video md:max-h-none">
+          {raffle.videoUrl ? (
+            <div className="overflow-hidden rounded-2xl border border-border bg-bg-panel">
+              <div className="relative aspect-video w-full">
                 <iframe
                   src={raffle.videoUrl}
                   title="Video del sorteo SANTICAZA"
@@ -101,12 +101,25 @@ export default function HomePage() {
                   allowFullScreen
                 />
               </div>
-            ) : (
-              <div className="flex aspect-video items-center justify-center text-text-muted">
-                Próximamente video del premio
+            </div>
+          ) : (
+            <div className="relative min-h-[280px] overflow-hidden rounded-2xl border border-border">
+              <Image
+                src="/images/hero-caza.jpg"
+                alt="Ambiente SANTICAZA"
+                fill
+                className="object-cover"
+                sizes="(max-width: 768px) 100vw, 50vw"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/20 to-transparent" />
+              <div className="absolute bottom-4 left-4 right-4">
+                <p className="text-xs uppercase tracking-[0.18em] text-accent">Premio destacado</p>
+                <p className="mt-1 font-[family-name:var(--font-display)] text-2xl tracking-wide">
+                  {raffle.prizeTitle}
+                </p>
               </div>
-            )}
-          </div>
+            </div>
+          )}
           <div className="relative min-h-[280px] overflow-hidden rounded-2xl border border-border">
             <Image
               src={raffle.imageUrl || "/images/premio-kit.jpg"}

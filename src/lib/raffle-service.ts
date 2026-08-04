@@ -84,10 +84,13 @@ export function createOrder(input: CreateOrderInput) {
     throw new Error("No quedan chances suficientes para este pack.");
   }
 
-  const birth = new Date(input.birthDate);
+  const birth = parseBirthDate(input.birthDate);
+  if (!birth) {
+    throw new Error("Fecha de nacimiento inválida. Usá DD/MM/AAAA.");
+  }
   const ageMs = Date.now() - birth.getTime();
   const age = ageMs / (365.25 * 24 * 60 * 60 * 1000);
-  if (Number.isNaN(birth.getTime()) || age < 18) {
+  if (age < 18) {
     throw new Error("Solo mayores de 18 años pueden participar.");
   }
 
@@ -115,7 +118,7 @@ export function createOrder(input: CreateOrderInput) {
       input.firstName.trim(),
       input.lastName.trim(),
       dni,
-      input.birthDate,
+      toIsoDate(birth),
       email,
       input.phone.trim(),
       pack.chances,
@@ -294,6 +297,39 @@ export function addWinner(input: {
 }
 
 type TicketLite = { id: number; raffle_id: number; order_id: number; number: number };
+
+function parseBirthDate(value: string): Date | null {
+  const raw = value.trim();
+  const iso = /^(\d{4})-(\d{2})-(\d{2})$/.exec(raw);
+  if (iso) {
+    const d = new Date(`${iso[1]}-${iso[2]}-${iso[3]}T12:00:00`);
+    return Number.isNaN(d.getTime()) ? null : d;
+  }
+  const ar = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(raw);
+  if (ar) {
+    const day = Number(ar[1]);
+    const month = Number(ar[2]);
+    const year = Number(ar[3]);
+    const d = new Date(year, month - 1, day, 12);
+    if (
+      Number.isNaN(d.getTime()) ||
+      d.getFullYear() !== year ||
+      d.getMonth() !== month - 1 ||
+      d.getDate() !== day
+    ) {
+      return null;
+    }
+    return d;
+  }
+  return null;
+}
+
+function toIsoDate(date: Date): string {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
 
 export function getOrderByPublicId(publicId: string) {
   const db = getDb();
