@@ -20,10 +20,19 @@ dotnet run --project SorteoSanticaza
 ## Qué incluye
 
 - Landing de sorteo (hero, countdown, packs, checkout)
+- **Mercado Pago Checkout Bricks** (Wallet Brick), igual que VentaCursos
 - API REST en `/api/*`
 - Mis Números, Ganadores, Términos, Admin, pago exitoso
 - SQLite local en `SorteoSanticaza/App_Data/santicaza.db`
-- Modo pago demo (asigna números al confirmar)
+- Simulación local si no hay credenciales MP
+
+## Mercado Pago
+
+1. Copiá `.env.example` → `.env`
+2. Pegá `MP_PUBLIC_KEY` y `MP_ACCESS_TOKEN` de Pruebas
+3. Reiniciá la app
+
+Guía completa: [`docs/MERCADOPAGO.md`](docs/MERCADOPAGO.md)
 
 ## Admin
 

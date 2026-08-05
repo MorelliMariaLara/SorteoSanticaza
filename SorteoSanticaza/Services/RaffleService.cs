@@ -217,7 +217,7 @@ SELECT last_insert_rowid();";
                 };
             }
 
-            if (status != "pending")
+            if (status != "pending" && status != "in_process")
             {
                 throw new InvalidOperationException("La orden no puede pagarse.");
             }
@@ -253,7 +253,7 @@ WHERE id = @id";
 
             return new CheckoutResult
             {
-                Mode = "demo",
+                Mode = "mercadopago",
                 CheckoutUrl = "/Pago/Exito?order=" + publicId,
                 PublicId = publicId,
                 Status = "paid",
@@ -267,7 +267,11 @@ WHERE id = @id";
         {
             using var conn = _db.Open();
             using var cmd = conn.CreateCommand();
-            cmd.CommandText = "SELECT * FROM orders WHERE public_id = @id";
+            cmd.CommandText = @"
+SELECT o.*, p.label as package_label
+FROM orders o
+LEFT JOIN packages p ON p.id = o.package_id
+WHERE o.public_id = @id";
             cmd.Parameters.AddWithValue("@id", publicId);
             using var reader = cmd.ExecuteReader();
             if (!reader.Read())
@@ -276,18 +280,83 @@ WHERE id = @id";
             }
 
             var orderId = reader.GetInt32(reader.GetOrdinal("id"));
-            var view = new PaidOrderView
-            {
-                PublicId = publicId,
-                FirstName = reader.GetString(reader.GetOrdinal("first_name")),
-                LastName = reader.GetString(reader.GetOrdinal("last_name")),
-                Status = reader.GetString(reader.GetOrdinal("status")),
-                Chances = reader.GetInt32(reader.GetOrdinal("chances")),
-                AmountCents = reader.GetInt64(reader.GetOrdinal("amount_cents")),
-            };
+            var view = MapOrder(reader);
             reader.Close();
             view.Tickets = GetTicketNumbers(conn, orderId);
             return view;
+        }
+
+        public void SetPreferenceId(string publicId, string preferenceId)
+        {
+            using var conn = _db.Open();
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = "UPDATE orders SET preference_id = @pref WHERE public_id = @id";
+            cmd.Parameters.AddWithValue("@pref", preferenceId);
+            cmd.Parameters.AddWithValue("@id", publicId);
+            cmd.ExecuteNonQuery();
+        }
+
+        public void UpdateOrderPaymentMeta(
+            string publicId,
+            string status,
+            string paymentRef,
+            string paymentMethod,
+            string statusDetail)
+        {
+            using var conn = _db.Open();
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = @"
+UPDATE orders
+SET status = @status,
+    payment_ref = COALESCE(@ref, payment_ref),
+    payment_method = COALESCE(@method, payment_method),
+    status_detail = COALESCE(@detail, status_detail)
+WHERE public_id = @id AND status != 'paid'";
+            cmd.Parameters.AddWithValue("@status", status);
+            cmd.Parameters.AddWithValue("@ref", (object)paymentRef ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("@method", (object)paymentMethod ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("@detail", (object)statusDetail ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("@id", publicId);
+            cmd.ExecuteNonQuery();
+        }
+
+        private static PaidOrderView MapOrder(SqliteDataReader reader)
+        {
+            string Safe(string col)
+            {
+                try
+                {
+                    var ord = reader.GetOrdinal(col);
+                    return reader.IsDBNull(ord) ? null : reader.GetString(ord);
+                }
+                catch
+                {
+                    return null;
+                }
+            }
+
+            var labelOrd = -1;
+            try { labelOrd = reader.GetOrdinal("package_label"); } catch { /* optional */ }
+
+            return new PaidOrderView
+            {
+                Id = reader.GetInt32(reader.GetOrdinal("id")),
+                PublicId = reader.GetString(reader.GetOrdinal("public_id")),
+                FirstName = reader.GetString(reader.GetOrdinal("first_name")),
+                LastName = reader.GetString(reader.GetOrdinal("last_name")),
+                Email = reader.GetString(reader.GetOrdinal("email")),
+                Status = reader.GetString(reader.GetOrdinal("status")),
+                PackageId = reader.GetInt32(reader.GetOrdinal("package_id")),
+                Chances = reader.GetInt32(reader.GetOrdinal("chances")),
+                AmountCents = reader.GetInt64(reader.GetOrdinal("amount_cents")),
+                PreferenceId = Safe("preference_id"),
+                PaymentRef = Safe("payment_ref"),
+                PaymentMethod = Safe("payment_method"),
+                StatusDetail = Safe("status_detail"),
+                Label = labelOrd >= 0 && !reader.IsDBNull(labelOrd)
+                    ? reader.GetString(labelOrd)
+                    : "Chances SANTICAZA",
+            };
         }
 
         public List<MyNumbersResult> GetNumbersByEmailOrDni(string query)

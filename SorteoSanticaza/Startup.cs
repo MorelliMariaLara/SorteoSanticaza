@@ -21,6 +21,7 @@ namespace SorteoSanticaza
         public void ConfigureServices(IServiceCollection services)
         {
             services.AddControllersWithViews();
+            services.AddHttpClient();
             services.AddDistributedMemoryCache();
             services.AddSession(options =>
             {
@@ -30,6 +31,7 @@ namespace SorteoSanticaza
             });
             services.AddSingleton<Db>();
             services.AddSingleton<RaffleService>();
+            services.AddSingleton<PaymentService>();
         }
 
         public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
