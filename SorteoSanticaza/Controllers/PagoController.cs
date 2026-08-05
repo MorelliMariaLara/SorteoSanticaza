@@ -1,19 +1,26 @@
 using Microsoft.AspNetCore.Mvc;
 using SorteoSanticaza.Services;
 
-namespace SorteoSanticaza.Controllers;
-
-public class PagoController : Controller
+namespace SorteoSanticaza.Controllers
 {
-    private readonly RaffleService _raffle;
-    public PagoController(RaffleService raffle) => _raffle = raffle;
-
-    [HttpGet]
-    public IActionResult Exito(string? order)
+    public class PagoController : Controller
     {
-        if (string.IsNullOrWhiteSpace(order))
-            return View(model: null);
+        private readonly RaffleService _raffle;
 
-        return View(_raffle.GetOrderByPublicId(order));
+        public PagoController(RaffleService raffle)
+        {
+            _raffle = raffle;
+        }
+
+        [HttpGet]
+        public IActionResult Exito(string? order)
+        {
+            if (string.IsNullOrWhiteSpace(order))
+            {
+                return View(model: null);
+            }
+
+            return View(_raffle.GetOrderByPublicId(order));
+        }
     }
 }
