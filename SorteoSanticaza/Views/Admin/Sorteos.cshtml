@@ -1,0 +1,75 @@
+@model List<RaffleAdminListItem>
+@{
+    ViewData["Title"] = "Admin · Sorteos";
+    ViewData["AdminTab"] = "sorteos";
+}
+
+<main class="section admin-page">
+    <partial name="_AdminNav" />
+
+    <div class="admin-toolbar">
+        <div>
+            <h1 class="font-display admin-title">Sorteos</h1>
+            <p class="admin-sub">Creá y editá sorteos, chances, precios e imágenes.</p>
+        </div>
+        <a class="btn btn-accent" asp-action="NuevoSorteo">+ Nuevo sorteo</a>
+    </div>
+
+    @if (Model == null || Model.Count == 0)
+    {
+        <div class="panel" style="margin-top:1.2rem;">
+            <p style="margin:0;color:var(--text-muted);">Todavía no hay sorteos. Creá el primero.</p>
+        </div>
+    }
+    else
+    {
+        <div class="admin-card-list">
+            @foreach (var r in Model)
+            {
+                <article class="panel admin-raffle-card">
+                    <div class="admin-raffle-media">
+                        @if (!string.IsNullOrWhiteSpace(r.ImageUrl))
+                        {
+                            <img src="@r.ImageUrl" alt="@r.Title" />
+                        }
+                        else
+                        {
+                            <div class="admin-raffle-placeholder">Sin imagen</div>
+                        }
+                    </div>
+                    <div class="admin-raffle-body">
+                        <div class="admin-raffle-top">
+                            <span class="badge status-@r.Status">@r.Status.ToUpperInvariant()</span>
+                            <strong class="font-display">@r.Title</strong>
+                        </div>
+                        <p class="admin-sub" style="margin:0.35rem 0 0;">@r.PrizeTitle</p>
+                        <p class="admin-meta">
+                            Sorteo: @FormatHelper.FormatDateTimeAr(r.DrawAt)
+                            · Vendidas @r.SoldTickets / @r.TotalTickets
+                            · @r.PackageCount packs
+                        </p>
+                        <div class="admin-actions">
+                            <a class="btn btn-accent" asp-action="EditSorteo" asp-route-id="@r.Id">Editar</a>
+                            @if (r.Status != "active")
+                            {
+                                <form asp-action="ActivarSorteo" method="post">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="id" value="@r.Id" />
+                                    <button class="btn btn-outline" type="submit">Activar</button>
+                                </form>
+                            }
+                            else
+                            {
+                                <form asp-action="CerrarSorteo" method="post">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="id" value="@r.Id" />
+                                    <button class="btn btn-ghost" type="submit">Cerrar</button>
+                                </form>
+                            }
+                        </div>
+                    </div>
+                </article>
+            }
+        </div>
+    }
+</main>

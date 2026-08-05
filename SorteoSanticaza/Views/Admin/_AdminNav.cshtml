@@ -1,0 +1,28 @@
+@{
+    var tab = (ViewData["AdminTab"] as string) ?? "sorteos";
+}
+<div class="admin-nav">
+    <div class="admin-nav-left">
+        <a class="brand" asp-controller="Home" asp-action="Index">SANTICAZA <small>Admin</small></a>
+        <nav class="admin-tabs">
+            <a class="admin-tab @(tab == "sorteos" ? "active" : "")" asp-action="Sorteos">Sorteos</a>
+            <a class="admin-tab @(tab == "pedidos" ? "active" : "")" asp-action="Pedidos">Pedidos</a>
+        </nav>
+    </div>
+    <div class="admin-nav-right">
+        <a class="btn btn-ghost" asp-controller="Home" asp-action="Index" target="_blank">Ver sitio</a>
+        <form asp-action="Logout" method="post" style="display:inline;margin:0;">
+            @Html.AntiForgeryToken()
+            <button class="btn btn-outline" type="submit">Salir</button>
+        </form>
+    </div>
+</div>
+
+@if (TempData["Message"] is string ok)
+{
+    <p class="admin-flash ok">@ok</p>
+}
+@if (TempData["Error"] is string err)
+{
+    <p class="admin-flash err">@err</p>
+}

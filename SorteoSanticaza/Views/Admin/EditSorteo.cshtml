@@ -1,0 +1,219 @@
+@model RaffleAdminForm
+@{
+    ViewData["Title"] = Model.Id > 0 ? "Editar sorteo" : "Nuevo sorteo";
+    ViewData["AdminTab"] = "sorteos";
+    var isNew = Model.Id <= 0;
+}
+
+<main class="section admin-page">
+    <partial name="_AdminNav" />
+
+    <div class="admin-toolbar">
+        <div>
+            <h1 class="font-display admin-title">@(isNew ? "Nuevo sorteo" : "Editar sorteo")</h1>
+            <p class="admin-sub">
+                @(isNew ? "Completá los datos, packs e imagen del premio." : ("ID #" + Model.Id + (Model.SoldTickets > 0 ? " · " + Model.SoldTickets + " chances vendidas" : "")))
+            </p>
+        </div>
+        <a class="btn btn-outline" asp-action="Sorteos">Volver</a>
+    </div>
+
+    <form asp-action="GuardarSorteo" method="post" enctype="multipart/form-data" class="admin-form" id="sorteoForm">
+        @Html.AntiForgeryToken()
+        <input type="hidden" asp-for="Id" />
+        <input type="hidden" asp-for="ImageUrl" />
+
+        <section class="panel admin-section">
+            <h2 class="admin-section-title">Datos del sorteo</h2>
+            <div class="form-grid">
+                <div>
+                    <label class="label" asp-for="Title"></label>
+                    <input class="field" asp-for="Title" required />
+                </div>
+                <div>
+                    <label class="label" asp-for="Subtitle"></label>
+                    <input class="field" asp-for="Subtitle" required />
+                </div>
+                <div style="grid-column:1/-1;">
+                    <label class="label" asp-for="Description"></label>
+                    <textarea class="field" asp-for="Description" rows="3" required></textarea>
+                </div>
+                <div>
+                    <label class="label" asp-for="PrizeTitle"></label>
+                    <input class="field" asp-for="PrizeTitle" required />
+                </div>
+                <div>
+                    <label class="label" asp-for="DrawAtLocal"></label>
+                    <input class="field" asp-for="DrawAtLocal" type="datetime-local" required />
+                </div>
+                <div style="grid-column:1/-1;">
+                    <label class="label" asp-for="PrizeDescription"></label>
+                    <textarea class="field" asp-for="PrizeDescription" rows="3" required></textarea>
+                </div>
+                <div>
+                    <label class="label" asp-for="TotalTickets"></label>
+                    <input class="field" asp-for="TotalTickets" type="number" min="1" required />
+                </div>
+                <div>
+                    <label class="label" asp-for="TicketStart"></label>
+                    <input class="field" asp-for="TicketStart" type="number" min="1" required />
+                </div>
+                <div>
+                    <label class="label" asp-for="Status"></label>
+                    <select class="field" asp-for="Status">
+                        <option value="draft">Borrador</option>
+                        <option value="active">Activo (público)</option>
+                        <option value="closed">Cerrado</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="label" asp-for="VideoUrl"></label>
+                    <input class="field" asp-for="VideoUrl" placeholder="https://..." />
+                </div>
+            </div>
+        </section>
+
+        <section class="panel admin-section">
+            <h2 class="admin-section-title">Imagen del sorteo / premio</h2>
+            <div class="admin-image-row">
+                <div class="admin-image-preview">
+                    @if (!string.IsNullOrWhiteSpace(Model.ImageUrl))
+                    {
+                        <img src="@Model.ImageUrl" alt="Imagen actual" id="imagePreview" />
+                    }
+                    else
+                    {
+                        <div class="admin-raffle-placeholder" id="imagePreviewEmpty">Sin imagen</div>
+                        <img src="" alt="" id="imagePreview" style="display:none;" />
+                    }
+                </div>
+                <div>
+                    <label class="label" for="imageFile">Subir imagen (JPG, PNG, WEBP — máx. 5 MB)</label>
+                    <input class="field" type="file" name="imageFile" id="imageFile" accept="image/jpeg,image/png,image/webp,image/gif" />
+                    <p class="admin-meta" style="margin-top:0.6rem;">
+                        Si no subís archivo, se mantiene la imagen actual.
+                        @(string.IsNullOrWhiteSpace(Model.ImageUrl) ? "" : ("Actual: " + Model.ImageUrl))
+                    </p>
+                </div>
+            </div>
+        </section>
+
+        <section class="panel admin-section">
+            <div class="admin-toolbar" style="margin:0 0 0.8rem;">
+                <h2 class="admin-section-title" style="margin:0;">Packs · chances y precios</h2>
+                <button class="btn btn-outline" type="button" id="addPackBtn">+ Agregar pack</button>
+            </div>
+            <p class="admin-sub" style="margin-top:0;">Precios en pesos ARS. El pack marcado como popular se preselecciona en la web.</p>
+
+            <div class="table-wrap" style="margin-top:1rem;">
+                <table id="packsTable">
+                    <thead>
+                        <tr>
+                            <th>Chances</th>
+                            <th>Precio ($)</th>
+                            <th>Etiqueta</th>
+                            <th>Popular</th>
+                            <th>Activo</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody id="packsBody">
+                    @for (var i = 0; i < Model.Packages.Count; i++)
+                    {
+                        <tr class="pack-row">
+                            <td>
+                                <input type="hidden" name="Packages[@i].Id" value="@Model.Packages[i].Id" />
+                                <input type="hidden" name="Packages[@i].SortOrder" value="@(i + 1)" class="sort-field" />
+                                <input class="field" type="number" min="1" name="Packages[@i].Chances" value="@Model.Packages[i].Chances" required />
+                            </td>
+                            <td>
+                                <input class="field" type="number" min="1" step="1" name="Packages[@i].PriceArs" value="@((int)Model.Packages[i].PriceArs)" required />
+                            </td>
+                            <td>
+                                <input class="field" type="text" name="Packages[@i].Label" value="@Model.Packages[i].Label" />
+                            </td>
+                            <td style="text-align:center;">
+                                <input type="checkbox" name="Packages[@i].Popular" value="true" @(Model.Packages[i].Popular ? "checked" : null) />
+                            </td>
+                            <td style="text-align:center;">
+                                <input type="hidden" name="Packages[@i].Active" value="false" />
+                                <input type="checkbox" name="Packages[@i].Active" value="true" @(Model.Packages[i].Active ? "checked" : null) />
+                            </td>
+                            <td>
+                                <button class="btn btn-ghost pack-remove" type="button">Quitar</button>
+                            </td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <div class="admin-form-actions">
+            <button class="btn btn-accent" type="submit">Guardar sorteo</button>
+            <a class="btn btn-outline" asp-action="Sorteos">Cancelar</a>
+        </div>
+    </form>
+</main>
+
+@section Scripts {
+<script>
+(function () {
+  const body = document.getElementById("packsBody");
+  const addBtn = document.getElementById("addPackBtn");
+  const fileInput = document.getElementById("imageFile");
+  const preview = document.getElementById("imagePreview");
+  const previewEmpty = document.getElementById("imagePreviewEmpty");
+
+  function reindex() {
+    [...body.querySelectorAll("tr.pack-row")].forEach((row, i) => {
+      row.querySelectorAll("input[name]").forEach((input) => {
+        input.name = input.name.replace(/Packages\[\d+\]/, "Packages[" + i + "]");
+      });
+      const sort = row.querySelector(".sort-field");
+      if (sort) sort.value = String(i + 1);
+    });
+  }
+
+  function bindRow(row) {
+    row.querySelector(".pack-remove")?.addEventListener("click", () => {
+      if (body.querySelectorAll("tr.pack-row").length <= 1) {
+        alert("Dejá al menos un pack.");
+        return;
+      }
+      row.remove();
+      reindex();
+    });
+  }
+
+  body.querySelectorAll("tr.pack-row").forEach(bindRow);
+
+  addBtn.addEventListener("click", () => {
+    const i = body.querySelectorAll("tr.pack-row").length;
+    const tr = document.createElement("tr");
+    tr.className = "pack-row";
+    tr.innerHTML =
+      '<td><input type="hidden" name="Packages[' + i + '].Id" value="0" />' +
+      '<input type="hidden" name="Packages[' + i + '].SortOrder" value="' + (i + 1) + '" class="sort-field" />' +
+      '<input class="field" type="number" min="1" name="Packages[' + i + '].Chances" value="1" required /></td>' +
+      '<td><input class="field" type="number" min="1" step="1" name="Packages[' + i + '].PriceArs" value="1000" required /></td>' +
+      '<td><input class="field" type="text" name="Packages[' + i + '].Label" value="" placeholder="Ej: 1 chance" /></td>' +
+      '<td style="text-align:center;"><input type="checkbox" name="Packages[' + i + '].Popular" value="true" /></td>' +
+      '<td style="text-align:center;"><input type="hidden" name="Packages[' + i + '].Active" value="false" />' +
+      '<input type="checkbox" name="Packages[' + i + '].Active" value="true" checked /></td>' +
+      '<td><button class="btn btn-ghost pack-remove" type="button">Quitar</button></td>';
+    body.appendChild(tr);
+    bindRow(tr);
+  });
+
+  fileInput?.addEventListener("change", () => {
+    const file = fileInput.files && fileInput.files[0];
+    if (!file || !preview) return;
+    const url = URL.createObjectURL(file);
+    preview.src = url;
+    preview.style.display = "block";
+    if (previewEmpty) previewEmpty.style.display = "none";
+  });
+})();
+</script>
+}

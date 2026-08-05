@@ -1,25 +1,39 @@
 @model List<AdminOrderRow>
 @{
-    ViewData["Title"] = "Panel Admin";
+    ViewData["Title"] = "Admin · Pedidos";
+    ViewData["AdminTab"] = "pedidos";
+    var active = ViewBag.ActiveRaffle as RafflePublic;
 }
 
-<main class="section">
-    <div style="display:flex;justify-content:space-between;align-items:center;gap:0.8rem;flex-wrap:wrap;">
-        <h1 class="font-display" style="font-size:2rem;color:var(--accent);margin:0;">Panel Admin</h1>
-        <a class="btn btn-outline" asp-action="Index">Actualizar</a>
+<main class="section admin-page">
+    <partial name="_AdminNav" />
+
+    <div class="admin-toolbar">
+        <div>
+            <h1 class="font-display admin-title">Pedidos y ganadores</h1>
+            <p class="admin-sub">
+                @(active == null
+                    ? "No hay sorteo activo."
+                    : ("Sorteo activo: " + active.Title + " · " + active.SoldTickets + " vendidas"))
+            </p>
+        </div>
+        <a class="btn btn-outline" asp-action="Pedidos">Actualizar</a>
     </div>
 
-    <form asp-action="PublicarGanador" method="post" class="panel" style="margin-top:1.2rem;display:grid;gap:0.7rem;">
+    <form asp-action="PublicarGanador" method="post" class="panel admin-section">
         @Html.AntiForgeryToken()
+        <h2 class="admin-section-title">Publicar ganador</h2>
         <div class="form-grid">
-            <input class="field" name="ticketNumber" type="number" placeholder="Número ganador" required />
-            <input class="field" name="prizeLabel" value="Premio principal" required />
+            <div>
+                <label class="label">Número ganador</label>
+                <input class="field" name="ticketNumber" type="number" min="1" placeholder="Ej: 4521" required />
+            </div>
+            <div>
+                <label class="label">Premio / etiqueta</label>
+                <input class="field" name="prizeLabel" value="Premio principal" required />
+            </div>
         </div>
-        <button class="btn btn-accent" type="submit">Publicar ganador</button>
-        @if (TempData["Message"] is string msg)
-        {
-            <p style="color:var(--text-muted);margin:0;">@msg</p>
-        }
+        <button class="btn btn-accent" type="submit" style="margin-top:0.9rem;">Publicar ganador</button>
     </form>
 
     <div class="table-wrap" style="margin-top:1.4rem;">

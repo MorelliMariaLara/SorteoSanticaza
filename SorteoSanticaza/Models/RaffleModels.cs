@@ -138,4 +138,69 @@ namespace SorteoSanticaza.Models
         public PaidOrderView Order { get; set; } = new PaidOrderView();
         public string? StatusHint { get; set; }
     }
+
+    public class PackageAdminRow
+    {
+        public int Id { get; set; }
+        public int Chances { get; set; } = 1;
+        public decimal PriceArs { get; set; }
+        public string Label { get; set; } = "";
+        public bool Popular { get; set; }
+        public int SortOrder { get; set; }
+        public bool Active { get; set; } = true;
+    }
+
+    public class RaffleAdminForm
+    {
+        public int Id { get; set; }
+
+        [Required, Display(Name = "Título"), MaxLength(200)]
+        public string Title { get; set; } = "Sorteo SANTICAZA";
+
+        [Required, Display(Name = "Subtítulo"), MaxLength(300)]
+        public string Subtitle { get; set; } = "Participá y ganá.";
+
+        [Required, Display(Name = "Descripción")]
+        public string Description { get; set; } = "";
+
+        [Required, Display(Name = "Premio"), MaxLength(300)]
+        public string PrizeTitle { get; set; } = "";
+
+        [Required, Display(Name = "Detalle del premio")]
+        public string PrizeDescription { get; set; } = "";
+
+        [Required, Display(Name = "Fecha del sorteo")]
+        public string DrawAtLocal { get; set; } = "";
+
+        [Display(Name = "Estado")]
+        public string Status { get; set; } = "active";
+
+        [Range(1, 1000000), Display(Name = "Total de chances")]
+        public int TotalTickets { get; set; } = 10000;
+
+        [Range(1, 1000000), Display(Name = "Número inicial")]
+        public int TicketStart { get; set; } = 1;
+
+        [Display(Name = "URL de video (opcional)")]
+        public string? VideoUrl { get; set; }
+
+        public string? ImageUrl { get; set; }
+
+        public int SoldTickets { get; set; }
+
+        public List<PackageAdminRow> Packages { get; set; } = new List<PackageAdminRow>();
+    }
+
+    public class RaffleAdminListItem
+    {
+        public int Id { get; set; }
+        public string Title { get; set; } = "";
+        public string PrizeTitle { get; set; } = "";
+        public string Status { get; set; } = "";
+        public string DrawAt { get; set; } = "";
+        public string? ImageUrl { get; set; }
+        public int TotalTickets { get; set; }
+        public int SoldTickets { get; set; }
+        public int PackageCount { get; set; }
+    }
 }

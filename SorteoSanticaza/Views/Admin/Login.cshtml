@@ -1,17 +1,22 @@
 @{
     ViewData["Title"] = "Admin";
-    Layout = "_Layout";
 }
 
-<main class="section" style="max-width:28rem;min-height:100vh;display:flex;flex-direction:column;justify-content:center;">
-    <h1 class="font-display" style="font-size:2rem;color:var(--accent);">Admin SANTICAZA</h1>
+<main class="section" style="max-width:28rem;min-height:70vh;display:flex;flex-direction:column;justify-content:center;">
+    <p class="badge">ACCESO PRIVADO</p>
+    <h1 class="font-display" style="font-size:2rem;color:var(--accent);margin:0.7rem 0 0.3rem;">Admin SANTICAZA</h1>
+    <p style="color:var(--text-muted);margin:0;">Gestioná sorteos, chances, precios, imágenes y pedidos.</p>
     <form asp-action="Login" method="post" style="margin-top:1.2rem;display:grid;gap:0.7rem;">
         @Html.AntiForgeryToken()
-        <input class="field" type="password" name="password" placeholder="Password" required />
+        <div>
+            <label class="label" for="password">Password</label>
+            <input class="field" id="password" type="password" name="password" placeholder="Password de admin" required autofocus />
+        </div>
         @if (ViewBag.Error is string err)
         {
             <div class="alert">@err</div>
         }
         <button class="btn btn-accent" type="submit">Ingresar</button>
+        <a class="btn btn-ghost" asp-controller="Home" asp-action="Index">Volver al sitio</a>
     </form>
 </main>

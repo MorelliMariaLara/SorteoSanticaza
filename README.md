@@ -45,10 +45,14 @@ Cuando pasemos a producción: sacar `MP_PUBLIC_KEY` / `MP_ACCESS_TOKEN` de `apps
 
 Guía: [`docs/MERCADOPAGO.md`](docs/MERCADOPAGO.md)
 
-## Admin
+## Admin (privado)
 
-- URL: `/Admin`
+- URL: `/Admin` (no aparece en el menú público)
 - Password: `santicaza-admin` (configurable en `appsettings.json` → `AdminPassword`)
+- Pestañas:
+  - **Sorteos**: crear/editar sorteos, chances, precios, imagen del premio, activar/cerrar
+  - **Pedidos**: listado de compras y publicación de ganadores
+- Imágenes subidas: `wwwroot/images/uploads/`
 
 ## API
 

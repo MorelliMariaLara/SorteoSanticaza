@@ -21,3 +21,7 @@ appsettings.*.local.json
 .env
 .env.*
 !.env.example
+
+## Uploads de admin (mantener carpeta)
+SorteoSanticaza/wwwroot/images/uploads/*
+!SorteoSanticaza/wwwroot/images/uploads/.gitkeep
