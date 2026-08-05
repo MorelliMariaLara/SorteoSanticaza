@@ -11,20 +11,21 @@ Misma integración que **VentaCursos / Nexa**: Wallet Brick + Preference + polli
 
 ## 2. Configurar el proyecto
 
-Creá `.env` en la raíz del repo (junto a `SorteoSanticaza.sln`):
+Las claves de **prueba** ya están en:
 
-```env
-APP_URL=http://localhost:5165
-MP_PUBLIC_KEY=TEST-xxxxxxxx
-MP_ACCESS_TOKEN=TEST-xxxxxxxx
-MP_ALLOW_SIMULATE=false
-```
+- `SorteoSanticaza/appsettings.json`
+- `SorteoSanticaza/appsettings.Development.json`
+- `.env.example` (referencia)
 
-Reiniciá la app. En consola deberías ver algo como:
+No hace falta configurar nada para probar en local: F5 y listo.
+
+En consola deberías ver:
 
 ```text
-MP configurado=True PK=TEST-… TK=TEST-…
+MP configurado=True PK=TEST-1733… TK=TEST-2319…
 ```
+
+**Producción:** sacar las claves de `appsettings` y cargarlas por variables de entorno / secretos del hosting.
 
 ## 3. Flujo de pago
 

@@ -28,11 +28,12 @@ dotnet run --project SorteoSanticaza
 
 ## Mercado Pago
 
-1. Copiá `.env.example` → `.env`
-2. Pegá `MP_PUBLIC_KEY` y `MP_ACCESS_TOKEN` de Pruebas
-3. Reiniciá la app
+Las **credenciales de prueba** ya están en `SorteoSanticaza/appsettings.json`.
+Abrís la solución, F5, y el Wallet Brick debería cargar.
 
-Guía completa: [`docs/MERCADOPAGO.md`](docs/MERCADOPAGO.md)
+Cuando pasemos a producción: sacar `MP_PUBLIC_KEY` / `MP_ACCESS_TOKEN` de `appsettings` y usar secretos del hosting (o `.env` fuera de git).
+
+Guía: [`docs/MERCADOPAGO.md`](docs/MERCADOPAGO.md)
 
 ## Admin
 
