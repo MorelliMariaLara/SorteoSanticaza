@@ -1,0 +1,232 @@
+@model CheckoutPageModel
+@{
+    ViewData["Title"] = "Checkout";
+    var order = Model.Order;
+    var amountLabel = FormatHelper.FormatArs(order.AmountCents);
+}
+
+<main>
+    <partial name="_Header" />
+    <section class="section">
+        <div class="grid-2">
+            <div>
+                <p class="badge">PAGO SEGURO · MERCADO PAGO</p>
+                <h1 class="font-display" style="font-size:2.2rem;margin:0.7rem 0 0.4rem;">Checkout SANTICAZA</h1>
+                <p style="color:var(--text-muted);">@order.Label · @order.Chances chances</p>
+                <p class="font-display" style="font-size:1.8rem;color:var(--accent);margin:0.6rem 0;">@amountLabel</p>
+                <p style="color:var(--text-muted);font-size:0.95rem;">
+                    @order.FirstName @order.LastName · @order.Email
+                </p>
+                <p style="color:var(--text-muted);font-size:0.9rem;margin-top:1rem;">
+                    Tus números se asignan <strong style="color:var(--text);">solo cuando el pago esté acreditado</strong>.
+                </p>
+                @if (!string.IsNullOrEmpty(Model.StatusHint))
+                {
+                    <p style="color:var(--text-muted);margin-top:0.8rem;" id="statusHint">Estado: @Model.StatusHint</p>
+                }
+            </div>
+
+            <div class="panel">
+                <div id="walletBrick_container"></div>
+
+                <div id="pendingBox" style="display:none;margin-top:1rem;">
+                    <p id="pendingMsg" style="color:var(--accent);margin:0;">Esperando acreditación del pago…</p>
+                    <p style="color:var(--text-muted);font-size:0.9rem;">
+                        Pagá en la ventana de Mercado Pago. Después volvé acá o tocá “Verificar pago”.
+                    </p>
+                    <button class="btn btn-outline" id="refreshStatusBtn" type="button" style="margin-top:0.7rem;">Verificar pago</button>
+                </div>
+
+                <button class="btn btn-accent" id="simulateBtn" type="button" style="display:none;width:100%;margin-top:0.8rem;">
+                    Simular pago (solo demo local)
+                </button>
+
+                <p class="alert" id="err" style="display:none;"></p>
+                <p style="color:var(--text-muted);font-size:0.85rem;margin-top:0.8rem;" id="cfgHint"></p>
+            </div>
+        </div>
+    </section>
+    <partial name="_Footer" />
+</main>
+
+@section Scripts {
+<script src="~/js/site.js" asp-append-version="true"></script>
+<script>
+  const orderId = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(order.PublicId));
+  const initialStatus = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.StatusHint ?? order.Status ?? ""));
+
+  let pollTimer = null;
+
+  function showErr(msg) {
+    const el = document.getElementById("err");
+    el.style.display = msg ? "block" : "none";
+    el.textContent = msg || "";
+  }
+
+  function showPending(msg) {
+    document.getElementById("pendingBox").style.display = "block";
+    if (msg) document.getElementById("pendingMsg").textContent = msg;
+  }
+
+  async function checkOrder() {
+    if (!orderId) return null;
+    const data = await api("/api/payments/order/" + encodeURIComponent(orderId));
+    if (data.accredited && data.redirect) {
+      stopPoll();
+      document.getElementById("pendingMsg").textContent = "¡Pago acreditado! Asignando tus números…";
+      location.href = data.redirect;
+      return data;
+    }
+    return data;
+  }
+
+  function startPoll() {
+    stopPoll();
+    pollTimer = setInterval(() => { checkOrder().catch(() => {}); }, 4000);
+  }
+
+  function stopPoll() {
+    if (pollTimer) clearInterval(pollTimer);
+    pollTimer = null;
+  }
+
+  document.getElementById("refreshStatusBtn").onclick = () => {
+    checkOrder().catch((e) => showErr(e.message));
+  };
+
+  function showApiError(e) {
+    showErr(e?.message || "Error");
+    const diag = e?.data?.diagnostics;
+    if (diag) document.getElementById("cfgHint").textContent = "Credenciales cargadas: " + diag;
+  }
+
+  async function mountWallet(cfg, pref) {
+    const hint = document.getElementById("cfgHint");
+    hint.textContent = cfg.testCredentials
+      ? "Modo prueba (TEST). Pagá con el botón de Mercado Pago y un usuario de prueba."
+      : "Pagá con Mercado Pago. Luego volvé a esta pestaña para recibir tus números.";
+
+    try {
+      await new Promise((resolve, reject) => {
+        const s = document.createElement("script");
+        s.src = "https://sdk.mercadopago.com/js/v2";
+        s.onload = resolve;
+        s.onerror = () => reject(new Error("No se pudo cargar el SDK de Mercado Pago"));
+        document.body.appendChild(s);
+      });
+
+      const mp = new MercadoPago(cfg.publicKey, { locale: "es-AR" });
+      await mp.bricks().create("wallet", "walletBrick_container", {
+        initialization: {
+          preferenceId: pref.preferenceId,
+          redirectMode: "blank",
+        },
+        customization: {
+          texts: { valueProp: "smart_option" },
+        },
+        callbacks: {
+          onReady: () => {
+            showPending("Cuando termines de pagar, tus chances se acreditan acá automáticamente.");
+            startPoll();
+          },
+          onSubmit: () => {
+            showPending("Pago iniciado. Esperando acreditación…");
+            startPoll();
+            return Promise.resolve();
+          },
+          onError: (err) => {
+            console.error(err);
+            showErr(err?.message || "No se pudo cargar el botón de Mercado Pago. Recargá la página.");
+          },
+        },
+      });
+    } catch (e) {
+      console.error(e);
+      showErr(e.message || "Error al iniciar Mercado Pago");
+    }
+  }
+
+  (async () => {
+    const cfg = await api("/api/payments/config");
+    const hint = document.getElementById("cfgHint");
+    if (cfg.diagnostics) hint.textContent = cfg.diagnostics;
+
+    if (cfg.problem) {
+      showErr(cfg.problem);
+      if (cfg.diagnostics) hint.textContent = cfg.diagnostics;
+    }
+    if (cfg.configured && cfg.pairOk === false) {
+      showErr("MP_PUBLIC_KEY y MP_ACCESS_TOKEN no son del mismo tipo (uno es TEST- y el otro APP_USR-). Pegá el par de Pruebas en .env y reiniciá.");
+      return;
+    }
+
+    const returning = ["pending", "in_process", "success", "approved", "failure", "rejected"].includes(initialStatus);
+    if (returning) {
+      showPending("Confirmando el estado de tu pago…");
+      startPoll();
+      const data = await checkOrder();
+      if (data && data.accredited) return;
+
+      const failedStatuses = ["failure", "rejected", "cancelled", "failed", "refunded"];
+      const failed =
+        failedStatuses.includes(initialStatus) ||
+        (data && failedStatuses.includes(data.status));
+
+      if (!failed) {
+        hint.textContent = "Si ya pagaste, tocá «Verificar pago». Seguimos consultando a Mercado Pago…";
+        return;
+      }
+      hint.textContent = "El pago anterior falló. Generamos un nuevo checkout abajo.";
+    }
+
+    let pref;
+    try {
+      pref = await api("/api/payments/preference", {
+        method: "POST",
+        body: JSON.stringify({ orderId }),
+      });
+    } catch (e) {
+      showApiError(e);
+      return;
+    }
+
+    if (pref.alreadyPaid && pref.redirect) {
+      location.href = pref.redirect;
+      return;
+    }
+
+    const canUseMp = cfg.configured && cfg.publicKey && pref.preferenceId && !pref.simulateOnly;
+    if (canUseMp) {
+      await mountWallet(cfg, pref);
+      return;
+    }
+
+    const simBtn = document.getElementById("simulateBtn");
+    if (cfg.simulate || pref.simulateOnly) {
+      simBtn.style.display = "inline-flex";
+      hint.textContent = "Mercado Pago no está configurado: podés simular el pago en local.";
+      if (cfg.diagnostics) hint.textContent += " · " + cfg.diagnostics;
+      simBtn.onclick = async () => {
+        try {
+          const result = await api("/api/payments/process", {
+            method: "POST",
+            body: JSON.stringify({ orderId, simulate: true }),
+          });
+          location.href = result.redirect;
+        } catch (e) {
+          showErr(e.message);
+        }
+      };
+      return;
+    }
+
+    showErr(cfg.problem || "Configurá MP_PUBLIC_KEY y MP_ACCESS_TOKEN en .env (mismo par de Pruebas) y reiniciá.");
+  })().catch((e) => showApiError(e));
+
+  window.addEventListener("beforeunload", stopPoll);
+  window.addEventListener("focus", () => { checkOrder().catch(() => {}); });
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") checkOrder().catch(() => {});
+  });
+</script>
+}

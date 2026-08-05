@@ -20,3 +20,4 @@ Thumbs.db
 appsettings.*.local.json
 .env
 .env.*
+!.env.example

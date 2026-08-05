@@ -41,8 +41,7 @@ namespace SorteoSanticaza.Controllers
                 }
 
                 var order = _raffle.CreateOrder(form);
-                var checkout = _raffle.ConfirmPayment(order.PublicId);
-                return Redirect(checkout.CheckoutUrl);
+                return RedirectToAction("Index", "Checkout", new { order = order.PublicId });
             }
             catch (Exception ex)
             {

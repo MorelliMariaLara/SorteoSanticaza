@@ -116,12 +116,26 @@ namespace SorteoSanticaza.Models
 
     public class PaidOrderView
     {
+        public int Id { get; set; }
         public string PublicId { get; set; } = "";
         public string FirstName { get; set; } = "";
         public string LastName { get; set; } = "";
+        public string Email { get; set; } = "";
         public string Status { get; set; } = "";
+        public int PackageId { get; set; }
         public int Chances { get; set; }
         public long AmountCents { get; set; }
+        public string? PreferenceId { get; set; }
+        public string? PaymentRef { get; set; }
+        public string? PaymentMethod { get; set; }
+        public string? StatusDetail { get; set; }
+        public string Label { get; set; } = "Chances SANTICAZA";
         public List<int> Tickets { get; set; } = new List<int>();
+    }
+
+    public class CheckoutPageModel
+    {
+        public PaidOrderView Order { get; set; } = new PaidOrderView();
+        public string? StatusHint { get; set; }
     }
 }

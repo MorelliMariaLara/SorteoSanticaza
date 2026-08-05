@@ -95,6 +95,9 @@ CREATE TABLE IF NOT EXISTS orders (
   amount_cents INTEGER NOT NULL,
   status TEXT NOT NULL DEFAULT 'pending',
   payment_ref TEXT,
+  preference_id TEXT,
+  payment_method TEXT,
+  status_detail TEXT,
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   paid_at TEXT
 );
@@ -124,6 +127,10 @@ CREATE INDEX IF NOT EXISTS idx_tickets_order ON tickets(order_id);
 ";
                 cmd.ExecuteNonQuery();
             }
+
+            EnsureColumn(conn, "orders", "preference_id", "TEXT");
+            EnsureColumn(conn, "orders", "payment_method", "TEXT");
+            EnsureColumn(conn, "orders", "status_detail", "TEXT");
 
             long count;
             using (var countCmd = conn.CreateCommand())
@@ -199,6 +206,23 @@ VALUES (@raffleId, 4521, 'Sorteo anterior — Accesorio premium', 'M. González'
             }
 
             tx.Commit();
+        }
+
+        private static void EnsureColumn(SqliteConnection conn, string table, string column, string type)
+        {
+            using var check = conn.CreateCommand();
+            check.CommandText = "PRAGMA table_info(" + table + ")";
+            using var reader = check.ExecuteReader();
+            while (reader.Read())
+            {
+                if (string.Equals(reader.GetString(1), column, StringComparison.OrdinalIgnoreCase))
+                    return;
+            }
+
+            reader.Close();
+            using var alter = conn.CreateCommand();
+            alter.CommandText = "ALTER TABLE " + table + " ADD COLUMN " + column + " " + type;
+            alter.ExecuteNonQuery();
         }
     }
 }
