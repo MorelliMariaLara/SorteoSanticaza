@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Text.RegularExpressions;
-using Microsoft.Data.Sqlite;
+using Microsoft.Data.SqlClient;
 using SorteoSanticaza.Data;
 using SorteoSanticaza.Models;
 
@@ -22,7 +22,7 @@ namespace SorteoSanticaza.Services
         {
             using var conn = _db.Open();
             using var cmd = conn.CreateCommand();
-            cmd.CommandText = "SELECT * FROM raffles WHERE status = 'active' ORDER BY id DESC LIMIT 1";
+            cmd.CommandText = "SELECT TOP 1 * FROM raffles WHERE status = N'active' ORDER BY id DESC";
             using var reader = cmd.ExecuteReader();
             if (!reader.Read())
             {
@@ -66,7 +66,7 @@ namespace SorteoSanticaza.Services
                         Chances = packReader.GetInt32(packReader.GetOrdinal("chances")),
                         PriceCents = packReader.GetInt64(packReader.GetOrdinal("price_cents")),
                         Label = packReader.GetString(packReader.GetOrdinal("label")),
-                        Popular = packReader.GetInt32(packReader.GetOrdinal("popular")) == 1,
+                        Popular = Convert.ToBoolean(packReader.GetValue(packReader.GetOrdinal("popular"))),
                     });
                 }
             }
@@ -151,9 +151,9 @@ INSERT INTO orders (
   birth_date, email, phone, chances, amount_cents, status
 ) VALUES (
   @publicId, @raffleId, @packageId, @firstName, @lastName, @dni,
-  @birthDate, @email, @phone, @chances, @amount, 'pending'
+  @birthDate, @email, @phone, @chances, @amount, N'pending'
 );
-SELECT last_insert_rowid();";
+SELECT CAST(SCOPE_IDENTITY() AS INT);";
             insert.Parameters.AddWithValue("@publicId", publicId);
             insert.Parameters.AddWithValue("@raffleId", raffle.Id);
             insert.Parameters.AddWithValue("@packageId", input.PackageId);
@@ -241,7 +241,7 @@ SELECT last_insert_rowid();";
                     update.Transaction = tx;
                     update.CommandText = @"
 UPDATE orders
-SET status = 'paid', payment_ref = @ref, paid_at = datetime('now')
+SET status = N'paid', payment_ref = @ref, paid_at = SYSUTCDATETIME()
 WHERE id = @id";
                     update.Parameters.AddWithValue("@ref", paymentRef ?? ("demo_" + DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()));
                     update.Parameters.AddWithValue("@id", orderId);
@@ -311,23 +311,23 @@ SET status = @status,
     payment_ref = COALESCE(@ref, payment_ref),
     payment_method = COALESCE(@method, payment_method),
     status_detail = COALESCE(@detail, status_detail)
-WHERE public_id = @id AND status != 'paid'";
+WHERE public_id = @id AND status <> N'paid'";
             cmd.Parameters.AddWithValue("@status", status);
-            cmd.Parameters.AddWithValue("@ref", (object)paymentRef ?? DBNull.Value);
-            cmd.Parameters.AddWithValue("@method", (object)paymentMethod ?? DBNull.Value);
-            cmd.Parameters.AddWithValue("@detail", (object)statusDetail ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("@ref", (object?)paymentRef ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("@method", (object?)paymentMethod ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("@detail", (object?)statusDetail ?? DBNull.Value);
             cmd.Parameters.AddWithValue("@id", publicId);
             cmd.ExecuteNonQuery();
         }
 
-        private static PaidOrderView MapOrder(SqliteDataReader reader)
+        private static PaidOrderView MapOrder(SqlDataReader reader)
         {
-            string Safe(string col)
+            string? Safe(string col)
             {
                 try
                 {
                     var ord = reader.GetOrdinal(col);
-                    return reader.IsDBNull(ord) ? null : reader.GetString(ord);
+                    return reader.IsDBNull(ord) ? null : Convert.ToString(reader.GetValue(ord), CultureInfo.InvariantCulture);
                 }
                 catch
                 {
@@ -367,7 +367,7 @@ WHERE public_id = @id AND status != 'paid'";
             using var cmd = conn.CreateCommand();
             cmd.CommandText = @"
 SELECT * FROM orders
-WHERE status = 'paid' AND (lower(email) = @email OR dni = @dni)
+WHERE status = N'paid' AND (LOWER(email) = @email OR dni = @dni)
 ORDER BY paid_at DESC";
             cmd.Parameters.AddWithValue("@email", q);
             cmd.Parameters.AddWithValue("@dni", dni);
@@ -385,7 +385,7 @@ ORDER BY paid_at DESC";
                         Email = reader.GetString(reader.GetOrdinal("email")),
                         Chances = reader.GetInt32(reader.GetOrdinal("chances")),
                         AmountCents = reader.GetInt64(reader.GetOrdinal("amount_cents")),
-                        PaidAt = reader.IsDBNull(reader.GetOrdinal("paid_at")) ? null : reader.GetString(reader.GetOrdinal("paid_at")),
+                        PaidAt = ReadDateTimeString(reader, "paid_at"),
                     }));
                 }
             }
@@ -432,11 +432,11 @@ ORDER BY w.drawn_at DESC";
             using var conn = _db.Open();
             using var cmd = conn.CreateCommand();
             cmd.CommandText = @"
-SELECT o.*,
-  (SELECT GROUP_CONCAT(number) FROM tickets t WHERE t.order_id = o.id) as ticket_numbers
+SELECT TOP (@limit) o.*,
+  (SELECT STRING_AGG(CAST(t.number AS VARCHAR(20)), ',') WITHIN GROUP (ORDER BY t.number)
+   FROM tickets t WHERE t.order_id = o.id) as ticket_numbers
 FROM orders o
-ORDER BY o.created_at DESC
-LIMIT @limit";
+ORDER BY o.created_at DESC";
             cmd.Parameters.AddWithValue("@limit", limit);
             using var reader = cmd.ExecuteReader();
             var list = new List<AdminOrderRow>();
@@ -454,8 +454,8 @@ LIMIT @limit";
                     AmountCents = reader.GetInt64(reader.GetOrdinal("amount_cents")),
                     Status = reader.GetString(reader.GetOrdinal("status")),
                     TicketNumbers = reader.IsDBNull(reader.GetOrdinal("ticket_numbers")) ? null : reader.GetString(reader.GetOrdinal("ticket_numbers")),
-                    CreatedAt = reader.GetString(reader.GetOrdinal("created_at")),
-                    PaidAt = reader.IsDBNull(reader.GetOrdinal("paid_at")) ? null : reader.GetString(reader.GetOrdinal("paid_at")),
+                    CreatedAt = ReadDateTimeString(reader, "created_at") ?? "",
+                    PaidAt = ReadDateTimeString(reader, "paid_at"),
                 });
             }
 
@@ -492,7 +492,7 @@ WHERE t.raffle_id = @r AND t.number = @n";
             insert.CommandText = @"
 INSERT INTO winners (raffle_id, ticket_number, prize_label, winner_name)
 VALUES (@r, @n, @p, @w);
-SELECT last_insert_rowid();";
+SELECT CAST(SCOPE_IDENTITY() AS INT);";
             insert.Parameters.AddWithValue("@r", raffleId);
             insert.Parameters.AddWithValue("@n", ticketNumber);
             insert.Parameters.AddWithValue("@p", prizeLabel);
@@ -501,7 +501,7 @@ SELECT last_insert_rowid();";
             return (id, winnerName);
         }
 
-        private static List<int> GetTicketNumbers(SqliteConnection conn, int orderId)
+        private static List<int> GetTicketNumbers(SqlConnection conn, int orderId)
         {
             using var cmd = conn.CreateCommand();
             cmd.CommandText = "SELECT number FROM tickets WHERE order_id = @id ORDER BY number ASC";
@@ -516,7 +516,7 @@ SELECT last_insert_rowid();";
             return list;
         }
 
-        private static List<int> AllocateTicketNumbers(SqliteConnection conn, int raffleId, int count)
+        private static List<int> AllocateTicketNumbers(SqlConnection conn, int raffleId, int count)
         {
             int total;
             int start;
@@ -570,6 +570,16 @@ SELECT last_insert_rowid();";
             }
 
             return available.Take(count).OrderBy(x => x).ToList();
+        }
+
+        private static string? ReadDateTimeString(SqlDataReader reader, string column)
+        {
+            var ord = reader.GetOrdinal(column);
+            if (reader.IsDBNull(ord)) return null;
+            var value = reader.GetValue(ord);
+            if (value is DateTime dt)
+                return dt.ToString("o", CultureInfo.InvariantCulture);
+            return Convert.ToString(value, CultureInfo.InvariantCulture);
         }
 
         private static DateTime? ParseBirthDate(string value)

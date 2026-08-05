@@ -4,11 +4,12 @@ Solución web **ASP.NET Core MVC (.NET 5)** para vender chances de sorteos de SA
 
 ## Abrir y ejecutar en Visual Studio
 
-1. Abrí el archivo de solución:
+1. Asegurate de tener **SQL Server Express** corriendo (`LARA-NB\SQLEXPRESS02`) y, si querés, ejecutá `database/01_CreateDatabaseAndTables.sql` en SSMS (la app también puede crear la BD/tablas al arrancar).
+2. Abrí el archivo de solución:
    - `SorteoSanticaza.sln`
-2. Marcá `SorteoSanticaza` como **proyecto de inicio** (ya es el único proyecto).
-3. Presioná **F5** o **Ctrl+F5**.
-4. Se abre en `http://localhost:5165`.
+3. Marcá `SorteoSanticaza` como **proyecto de inicio** (ya es el único proyecto).
+4. Presioná **F5** o **Ctrl+F5**.
+5. Se abre en `http://localhost:5165`.
 
 También podés ejecutar desde terminal:
 
@@ -17,13 +18,22 @@ dotnet restore
 dotnet run --project SorteoSanticaza
 ```
 
+## Base de datos (SQL Server)
+
+- Servidor: `LARA-NB\SQLEXPRESS02`
+- Base: `SorteosSantiCaza`
+- Connection string en `SorteoSanticaza/appsettings.json` → `ConnectionStrings:SorteosSantiCaza`
+- Scripts: [`database/`](database/README.md)
+
+Para cambiar de servidor/BD, editá el connection string o seteá `CONNECTION_STRING` en `.env`.
+
 ## Qué incluye
 
 - Landing de sorteo (hero, countdown, packs, checkout)
 - **Mercado Pago Checkout Bricks** (Wallet Brick), igual que VentaCursos
 - API REST en `/api/*`
 - Mis Números, Ganadores, Términos, Admin, pago exitoso
-- SQLite local en `SorteoSanticaza/App_Data/santicaza.db`
+- SQL Server (`SorteosSantiCaza`)
 - Simulación local si no hay credenciales MP
 
 ## Mercado Pago

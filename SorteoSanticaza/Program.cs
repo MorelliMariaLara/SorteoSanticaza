@@ -21,7 +21,19 @@ namespace SorteoSanticaza
             using (var scope = host.Services.CreateScope())
             {
                 var db = scope.ServiceProvider.GetRequiredService<Db>();
-                db.EnsureCreatedAndSeeded();
+                Console.WriteLine("  SQL Server: " + MaskConnectionString(db.ConnectionString));
+                try
+                {
+                    db.EnsureCreatedAndSeeded();
+                    Console.WriteLine("  Base SorteosSantiCaza lista.");
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine("  ERROR SQL Server: " + ex.Message);
+                    Console.WriteLine("  Revisá que exista LARA-NB\\SQLEXPRESS02 y la BD SorteosSantiCaza.");
+                    Console.WriteLine("  Script: database/01_CreateDatabaseAndTables.sql");
+                    throw;
+                }
 
                 try
                 {
@@ -47,13 +59,17 @@ namespace SorteoSanticaza
                                  "APP_URL", "PORT",
                                  "MP_PUBLIC_KEY", "MP_ACCESS_TOKEN",
                                  "MP_ALLOW_SIMULATE", "MP_WEBHOOK_URL",
-                                 "AdminPassword",
+                                 "AdminPassword", "CONNECTION_STRING",
                              })
                     {
                         var val = Environment.GetEnvironmentVariable(key);
                         if (!string.IsNullOrEmpty(val))
                             dict[key] = val;
                     }
+
+                    var connEnv = Environment.GetEnvironmentVariable("CONNECTION_STRING");
+                    if (!string.IsNullOrEmpty(connEnv))
+                        dict["ConnectionStrings:SorteosSantiCaza"] = connEnv;
 
                     if (dict.Count > 0)
                         config.AddInMemoryCollection(dict);
@@ -105,6 +121,22 @@ namespace SorteoSanticaza
                 !mpTk.Contains("TEST-APP_USR", StringComparison.OrdinalIgnoreCase))
             {
                 Environment.SetEnvironmentVariable("MP_ALLOW_SIMULATE", "false");
+            }
+        }
+
+        private static string MaskConnectionString(string cs)
+        {
+            if (string.IsNullOrEmpty(cs)) return "(vacío)";
+            try
+            {
+                var builder = new System.Data.Common.DbConnectionStringBuilder { ConnectionString = cs };
+                if (builder.ContainsKey("Password")) builder["Password"] = "****";
+                if (builder.ContainsKey("Pwd")) builder["Pwd"] = "****";
+                return builder.ConnectionString;
+            }
+            catch
+            {
+                return cs;
             }
         }
     }

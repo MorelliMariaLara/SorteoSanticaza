@@ -1,7 +1,5 @@
 using System;
-using System.IO;
-using Microsoft.AspNetCore.Hosting;
-using Microsoft.Data.Sqlite;
+using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Configuration;
 
 namespace SorteoSanticaza.Data
@@ -10,139 +8,145 @@ namespace SorteoSanticaza.Data
     {
         private readonly string _connectionString;
 
-        public Db(IConfiguration configuration, IWebHostEnvironment env)
+        public Db(IConfiguration configuration)
         {
-            var configured = configuration.GetConnectionString("Default")
-                ?? "Data Source=App_Data/santicaza.db";
-
-            if (configured.StartsWith("Data Source=", StringComparison.OrdinalIgnoreCase))
-            {
-                var relative = configured.Substring("Data Source=".Length).Trim();
-                if (!Path.IsPathRooted(relative))
-                {
-                    var full = Path.Combine(env.ContentRootPath, relative);
-                    var dir = Path.GetDirectoryName(full);
-                    if (!string.IsNullOrEmpty(dir))
-                    {
-                        Directory.CreateDirectory(dir);
-                    }
-
-                    configured = "Data Source=" + full;
-                }
-            }
-
-            _connectionString = configured;
+            _connectionString =
+                configuration.GetConnectionString("SorteosSantiCaza")
+                ?? configuration["ConnectionStrings:SorteosSantiCaza"]
+                ?? configuration["CONNECTION_STRING"]
+                ?? @"Server=LARA-NB\SQLEXPRESS02;Database=SorteosSantiCaza;Trusted_Connection=True;TrustServerCertificate=True;MultipleActiveResultSets=True";
         }
 
-        public SqliteConnection Open()
-        {
-            var conn = new SqliteConnection(_connectionString);
-            conn.Open();
-            using (var pragma = conn.CreateCommand())
-            {
-                pragma.CommandText = "PRAGMA foreign_keys = ON;";
-                pragma.ExecuteNonQuery();
-            }
+        public string ConnectionString => _connectionString;
 
+        public SqlConnection Open()
+        {
+            var conn = new SqlConnection(_connectionString);
+            conn.Open();
             return conn;
         }
 
         public void EnsureCreatedAndSeeded()
         {
+            EnsureDatabaseExists();
             using var conn = Open();
+
             using (var cmd = conn.CreateCommand())
             {
                 cmd.CommandText = @"
-CREATE TABLE IF NOT EXISTS raffles (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  title TEXT NOT NULL,
-  subtitle TEXT NOT NULL,
-  description TEXT NOT NULL,
-  prize_title TEXT NOT NULL,
-  prize_description TEXT NOT NULL,
-  draw_at TEXT NOT NULL,
-  status TEXT NOT NULL DEFAULT 'active',
-  total_tickets INTEGER NOT NULL DEFAULT 10000,
-  ticket_start INTEGER NOT NULL DEFAULT 1,
-  video_url TEXT,
-  image_url TEXT,
-  created_at TEXT NOT NULL DEFAULT (datetime('now'))
-);
+IF OBJECT_ID(N'dbo.raffles', N'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.raffles
+    (
+        id INT IDENTITY(1,1) NOT NULL CONSTRAINT PK_raffles PRIMARY KEY,
+        title NVARCHAR(200) NOT NULL,
+        subtitle NVARCHAR(300) NOT NULL,
+        description NVARCHAR(MAX) NOT NULL,
+        prize_title NVARCHAR(300) NOT NULL,
+        prize_description NVARCHAR(MAX) NOT NULL,
+        draw_at NVARCHAR(64) NOT NULL,
+        status NVARCHAR(40) NOT NULL CONSTRAINT DF_raffles_status DEFAULT (N'active'),
+        total_tickets INT NOT NULL CONSTRAINT DF_raffles_total DEFAULT (10000),
+        ticket_start INT NOT NULL CONSTRAINT DF_raffles_start DEFAULT (1),
+        video_url NVARCHAR(500) NULL,
+        image_url NVARCHAR(500) NULL,
+        created_at DATETIME2(3) NOT NULL CONSTRAINT DF_raffles_created DEFAULT (SYSUTCDATETIME())
+    );
+END
 
-CREATE TABLE IF NOT EXISTS packages (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  raffle_id INTEGER NOT NULL REFERENCES raffles(id) ON DELETE CASCADE,
-  chances INTEGER NOT NULL,
-  price_cents INTEGER NOT NULL,
-  label TEXT NOT NULL,
-  popular INTEGER NOT NULL DEFAULT 0,
-  sort_order INTEGER NOT NULL DEFAULT 0,
-  active INTEGER NOT NULL DEFAULT 1
-);
+IF OBJECT_ID(N'dbo.packages', N'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.packages
+    (
+        id INT IDENTITY(1,1) NOT NULL CONSTRAINT PK_packages PRIMARY KEY,
+        raffle_id INT NOT NULL,
+        chances INT NOT NULL,
+        price_cents BIGINT NOT NULL,
+        label NVARCHAR(120) NOT NULL,
+        popular BIT NOT NULL CONSTRAINT DF_packages_popular DEFAULT (0),
+        sort_order INT NOT NULL CONSTRAINT DF_packages_sort DEFAULT (0),
+        active BIT NOT NULL CONSTRAINT DF_packages_active DEFAULT (1),
+        CONSTRAINT FK_packages_raffles FOREIGN KEY (raffle_id)
+            REFERENCES dbo.raffles (id) ON DELETE CASCADE
+    );
+END
 
-CREATE TABLE IF NOT EXISTS orders (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  public_id TEXT NOT NULL UNIQUE,
-  raffle_id INTEGER NOT NULL REFERENCES raffles(id),
-  package_id INTEGER NOT NULL REFERENCES packages(id),
-  first_name TEXT NOT NULL,
-  last_name TEXT NOT NULL,
-  dni TEXT NOT NULL,
-  birth_date TEXT NOT NULL,
-  email TEXT NOT NULL,
-  phone TEXT NOT NULL,
-  chances INTEGER NOT NULL,
-  amount_cents INTEGER NOT NULL,
-  status TEXT NOT NULL DEFAULT 'pending',
-  payment_ref TEXT,
-  preference_id TEXT,
-  payment_method TEXT,
-  status_detail TEXT,
-  created_at TEXT NOT NULL DEFAULT (datetime('now')),
-  paid_at TEXT
-);
+IF OBJECT_ID(N'dbo.orders', N'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.orders
+    (
+        id INT IDENTITY(1,1) NOT NULL CONSTRAINT PK_orders PRIMARY KEY,
+        public_id NVARCHAR(64) NOT NULL,
+        raffle_id INT NOT NULL,
+        package_id INT NOT NULL,
+        first_name NVARCHAR(120) NOT NULL,
+        last_name NVARCHAR(120) NOT NULL,
+        dni NVARCHAR(20) NOT NULL,
+        birth_date NVARCHAR(20) NOT NULL,
+        email NVARCHAR(256) NOT NULL,
+        phone NVARCHAR(40) NOT NULL,
+        chances INT NOT NULL,
+        amount_cents BIGINT NOT NULL,
+        status NVARCHAR(40) NOT NULL CONSTRAINT DF_orders_status DEFAULT (N'pending'),
+        payment_ref NVARCHAR(120) NULL,
+        preference_id NVARCHAR(120) NULL,
+        payment_method NVARCHAR(80) NULL,
+        status_detail NVARCHAR(200) NULL,
+        created_at DATETIME2(3) NOT NULL CONSTRAINT DF_orders_created DEFAULT (SYSUTCDATETIME()),
+        paid_at DATETIME2(3) NULL,
+        CONSTRAINT UQ_orders_public_id UNIQUE (public_id),
+        CONSTRAINT FK_orders_raffles FOREIGN KEY (raffle_id) REFERENCES dbo.raffles (id),
+        CONSTRAINT FK_orders_packages FOREIGN KEY (package_id) REFERENCES dbo.packages (id)
+    );
+    CREATE INDEX IX_orders_email ON dbo.orders (email);
+    CREATE INDEX IX_orders_dni ON dbo.orders (dni);
+END
 
-CREATE TABLE IF NOT EXISTS tickets (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  raffle_id INTEGER NOT NULL REFERENCES raffles(id),
-  order_id INTEGER NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
-  number INTEGER NOT NULL,
-  created_at TEXT NOT NULL DEFAULT (datetime('now')),
-  UNIQUE(raffle_id, number)
-);
+IF OBJECT_ID(N'dbo.tickets', N'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.tickets
+    (
+        id INT IDENTITY(1,1) NOT NULL CONSTRAINT PK_tickets PRIMARY KEY,
+        raffle_id INT NOT NULL,
+        order_id INT NOT NULL,
+        number INT NOT NULL,
+        created_at DATETIME2(3) NOT NULL CONSTRAINT DF_tickets_created DEFAULT (SYSUTCDATETIME()),
+        CONSTRAINT UQ_tickets_raffle_number UNIQUE (raffle_id, number),
+        CONSTRAINT FK_tickets_raffles FOREIGN KEY (raffle_id) REFERENCES dbo.raffles (id),
+        CONSTRAINT FK_tickets_orders FOREIGN KEY (order_id) REFERENCES dbo.orders (id) ON DELETE CASCADE
+    );
+    CREATE INDEX IX_tickets_order ON dbo.tickets (order_id);
+END
 
-CREATE TABLE IF NOT EXISTS winners (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  raffle_id INTEGER NOT NULL REFERENCES raffles(id),
-  ticket_number INTEGER NOT NULL,
-  prize_label TEXT NOT NULL,
-  winner_name TEXT NOT NULL,
-  drawn_at TEXT NOT NULL DEFAULT (datetime('now'))
-);
-
-CREATE INDEX IF NOT EXISTS idx_orders_email ON orders(email);
-CREATE INDEX IF NOT EXISTS idx_orders_dni ON orders(dni);
-CREATE INDEX IF NOT EXISTS idx_orders_public_id ON orders(public_id);
-CREATE INDEX IF NOT EXISTS idx_tickets_order ON tickets(order_id);
+IF OBJECT_ID(N'dbo.winners', N'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.winners
+    (
+        id INT IDENTITY(1,1) NOT NULL CONSTRAINT PK_winners PRIMARY KEY,
+        raffle_id INT NOT NULL,
+        ticket_number INT NOT NULL,
+        prize_label NVARCHAR(200) NOT NULL,
+        winner_name NVARCHAR(200) NOT NULL,
+        drawn_at NVARCHAR(64) NOT NULL CONSTRAINT DF_winners_drawn DEFAULT (CONVERT(NVARCHAR(64), SYSUTCDATETIME(), 126)),
+        CONSTRAINT FK_winners_raffles FOREIGN KEY (raffle_id) REFERENCES dbo.raffles (id)
+    );
+END
 ";
                 cmd.ExecuteNonQuery();
             }
 
-            EnsureColumn(conn, "orders", "preference_id", "TEXT");
-            EnsureColumn(conn, "orders", "payment_method", "TEXT");
-            EnsureColumn(conn, "orders", "status_detail", "TEXT");
+            EnsureColumn(conn, "orders", "preference_id", "NVARCHAR(120) NULL");
+            EnsureColumn(conn, "orders", "payment_method", "NVARCHAR(80) NULL");
+            EnsureColumn(conn, "orders", "status_detail", "NVARCHAR(200) NULL");
 
             long count;
             using (var countCmd = conn.CreateCommand())
             {
-                countCmd.CommandText = "SELECT COUNT(*) FROM raffles";
+                countCmd.CommandText = "SELECT COUNT(*) FROM dbo.raffles";
                 count = Convert.ToInt64(countCmd.ExecuteScalar() ?? 0L);
             }
 
-            if (count > 0)
-            {
-                return;
-            }
+            if (count > 0) return;
 
             using var tx = conn.BeginTransaction();
             long raffleId;
@@ -150,14 +154,14 @@ CREATE INDEX IF NOT EXISTS idx_tickets_order ON tickets(order_id);
             {
                 insert.Transaction = tx;
                 insert.CommandText = @"
-INSERT INTO raffles (
+INSERT INTO dbo.raffles (
   title, subtitle, description, prize_title, prize_description,
   draw_at, status, total_tickets, ticket_start, video_url, image_url
 ) VALUES (
   @title, @subtitle, @description, @prizeTitle, @prizeDescription,
-  @drawAt, 'active', 10000, 1, NULL, @imageUrl
+  @drawAt, N'active', 10000, 1, NULL, @imageUrl
 );
-SELECT last_insert_rowid();";
+SELECT CAST(SCOPE_IDENTITY() AS BIGINT);";
                 insert.Parameters.AddWithValue("@title", "Sorteo SANTICAZA");
                 insert.Parameters.AddWithValue("@subtitle", "Participá y ganá.");
                 insert.Parameters.AddWithValue("@description", "Cada compra suma chances automáticamente para el sorteo en vivo de SANTICAZA.");
@@ -168,15 +172,15 @@ SELECT last_insert_rowid();";
                 raffleId = Convert.ToInt64(insert.ExecuteScalar() ?? 0L);
             }
 
-            var packs = new (int chances, long price, string label, int popular, int order)[]
+            var packs = new (int chances, long price, string label, bool popular, int order)[]
             {
-                (1, 100000, "1 chance", 0, 1),
-                (3, 200000, "3 chances", 0, 2),
-                (5, 300000, "5 chances", 0, 3),
-                (10, 500000, "10 chances", 0, 4),
-                (25, 1000000, "25 chances", 1, 5),
-                (50, 1700000, "50 chances", 0, 6),
-                (100, 3000000, "100 super chances", 0, 7),
+                (1, 100000, "1 chance", false, 1),
+                (3, 200000, "3 chances", false, 2),
+                (5, 300000, "5 chances", false, 3),
+                (10, 500000, "10 chances", false, 4),
+                (25, 1000000, "25 chances", true, 5),
+                (50, 1700000, "50 chances", false, 6),
+                (100, 3000000, "100 super chances", false, 7),
             };
 
             foreach (var p in packs)
@@ -184,8 +188,8 @@ SELECT last_insert_rowid();";
                 using var insertPack = conn.CreateCommand();
                 insertPack.Transaction = tx;
                 insertPack.CommandText = @"
-INSERT INTO packages (raffle_id, chances, price_cents, label, popular, sort_order)
-VALUES (@raffleId, @chances, @price, @label, @popular, @order)";
+INSERT INTO dbo.packages (raffle_id, chances, price_cents, label, popular, sort_order, active)
+VALUES (@raffleId, @chances, @price, @label, @popular, @order, 1)";
                 insertPack.Parameters.AddWithValue("@raffleId", raffleId);
                 insertPack.Parameters.AddWithValue("@chances", p.chances);
                 insertPack.Parameters.AddWithValue("@price", p.price);
@@ -199,8 +203,8 @@ VALUES (@raffleId, @chances, @price, @label, @popular, @order)";
             {
                 winner.Transaction = tx;
                 winner.CommandText = @"
-INSERT INTO winners (raffle_id, ticket_number, prize_label, winner_name, drawn_at)
-VALUES (@raffleId, 4521, 'Sorteo anterior — Accesorio premium', 'M. González', '2026-07-10T22:00:00-03:00')";
+INSERT INTO dbo.winners (raffle_id, ticket_number, prize_label, winner_name, drawn_at)
+VALUES (@raffleId, 4521, N'Sorteo anterior — Accesorio premium', N'M. González', N'2026-07-10T22:00:00-03:00')";
                 winner.Parameters.AddWithValue("@raffleId", raffleId);
                 winner.ExecuteNonQuery();
             }
@@ -208,20 +212,41 @@ VALUES (@raffleId, 4521, 'Sorteo anterior — Accesorio premium', 'M. González'
             tx.Commit();
         }
 
-        private static void EnsureColumn(SqliteConnection conn, string table, string column, string type)
+        private void EnsureDatabaseExists()
+        {
+            var builder = new SqlConnectionStringBuilder(_connectionString);
+            var dbName = builder.InitialCatalog;
+            if (string.IsNullOrWhiteSpace(dbName)) return;
+
+            builder.InitialCatalog = "master";
+            using var conn = new SqlConnection(builder.ConnectionString);
+            conn.Open();
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = @"
+IF DB_ID(@name) IS NULL
+BEGIN
+    DECLARE @sql NVARCHAR(MAX) = N'CREATE DATABASE ' + QUOTENAME(@name) + N';';
+    EXEC sys.sp_executesql @sql;
+END";
+            cmd.Parameters.AddWithValue("@name", dbName);
+            cmd.ExecuteNonQuery();
+        }
+
+        private static void EnsureColumn(SqlConnection conn, string table, string column, string definition)
         {
             using var check = conn.CreateCommand();
-            check.CommandText = "PRAGMA table_info(" + table + ")";
-            using var reader = check.ExecuteReader();
-            while (reader.Read())
-            {
-                if (string.Equals(reader.GetString(1), column, StringComparison.OrdinalIgnoreCase))
-                    return;
-            }
+            check.CommandText = @"
+SELECT 1
+FROM sys.columns c
+INNER JOIN sys.tables t ON c.object_id = t.object_id
+WHERE t.name = @table AND c.name = @column";
+            check.Parameters.AddWithValue("@table", table);
+            check.Parameters.AddWithValue("@column", column);
+            var exists = check.ExecuteScalar();
+            if (exists != null) return;
 
-            reader.Close();
             using var alter = conn.CreateCommand();
-            alter.CommandText = "ALTER TABLE " + table + " ADD COLUMN " + column + " " + type;
+            alter.CommandText = "ALTER TABLE dbo." + table + " ADD " + column + " " + definition;
             alter.ExecuteNonQuery();
         }
     }
