@@ -8,6 +8,8 @@ obj/
 *.sln.docstates
 App_Data/*.db
 App_Data/*.db-*
+**/App_Data/*.db
+**/App_Data/*.db-*
 *.log
 
 ## OS
