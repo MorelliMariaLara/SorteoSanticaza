@@ -53,7 +53,9 @@
 <script src="~/js/site.js" asp-append-version="true"></script>
 <script>
   const orderId = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(order.PublicId));
-  const initialStatus = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.StatusHint ?? order.Status ?? ""));
+  // Solo el ?status= de la URL indica retorno desde Mercado Pago.
+  // NO usar order.Status: una orden nueva también es "pending" y bloquearía el Brick.
+  const statusHint = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.StatusHint ?? ""));
 
   let pollTimer = null;
 
@@ -160,7 +162,8 @@
       return;
     }
 
-    const returning = ["pending", "in_process", "success", "approved", "failure", "rejected"].includes(initialStatus);
+    const returning = !!statusHint &&
+      ["pending", "in_process", "success", "approved", "failure", "rejected"].includes(statusHint);
     if (returning) {
       showPending("Confirmando el estado de tu pago…");
       startPoll();
@@ -169,14 +172,15 @@
 
       const failedStatuses = ["failure", "rejected", "cancelled", "failed", "refunded"];
       const failed =
-        failedStatuses.includes(initialStatus) ||
+        failedStatuses.includes(statusHint) ||
         (data && failedStatuses.includes(data.status));
 
       if (!failed) {
-        hint.textContent = "Si ya pagaste, tocá «Verificar pago». Seguimos consultando a Mercado Pago…";
-        return;
+        // Volviste de MP pero aún no acredita: mostramos verificar Y el botón por si cerraste sin pagar.
+        hint.textContent = "Si ya pagaste, tocá «Verificar pago». Si no, usá el botón de Mercado Pago abajo.";
+      } else {
+        hint.textContent = "El pago anterior falló. Generamos un nuevo checkout abajo.";
       }
-      hint.textContent = "El pago anterior falló. Generamos un nuevo checkout abajo.";
     }
 
     let pref;
