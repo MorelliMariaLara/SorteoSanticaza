@@ -1,8 +1,12 @@
 using Microsoft.AspNetCore.Mvc;
 
-namespace SorteoSanticaza.Controllers;
-
-public class TerminosController : Controller
+namespace SorteoSanticaza.Controllers
 {
-    public IActionResult Index() => View();
+    public class TerminosController : Controller
+    {
+        public IActionResult Index()
+        {
+            return View();
+        }
+    }
 }

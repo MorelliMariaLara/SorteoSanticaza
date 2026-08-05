@@ -1,6 +1,6 @@
 # Sorteo SANTICAZA
 
-Solución web **ASP.NET Core MVC (.NET 8)** para vender chances de sorteos de SANTICAZA.
+Solución web **ASP.NET Core MVC (.NET 5)** para vender chances de sorteos de SANTICAZA.
 
 ## Abrir y ejecutar en Visual Studio
 
@@ -42,7 +42,7 @@ dotnet run --project SorteoSanticaza
 
 ## Requisitos
 
-- Visual Studio 2022 (o Rider) con workload **ASP.NET and web development**
-- .NET 8 SDK
+- Visual Studio 2019/2022 con workload **ASP.NET and web development**
+- .NET 5 SDK (compatible con `C:\Program Files\dotnet\sdk\5.0.x`)
 
 No usa npm/Node.js.
