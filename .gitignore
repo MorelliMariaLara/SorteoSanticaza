@@ -1,0 +1,20 @@
+## .NET
+bin/
+obj/
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+App_Data/*.db
+App_Data/*.db-*
+*.log
+
+## OS
+.DS_Store
+Thumbs.db
+
+## Secrets / env
+appsettings.*.local.json
+.env
+.env.*

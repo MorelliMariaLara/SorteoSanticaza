@@ -1,0 +1,173 @@
+﻿@model RafflePublic?
+@{
+    ViewData["Title"] = "SANTICAZA";
+    var raffle = Model;
+    var selectedPackage = raffle?.Packages.FirstOrDefault(p => p.Popular) ?? raffle?.Packages.FirstOrDefault();
+}
+
+@if (raffle is null)
+{
+    <main class="section" style="min-height:100vh;display:grid;place-items:center;text-align:center;">
+        <div>
+            <h1 class="hero-brand">SANTICAZA</h1>
+            <p style="color:var(--text-muted)">No hay un sorteo activo por el momento.</p>
+        </div>
+    </main>
+    return;
+}
+
+<main>
+    <section class="hero">
+        <img class="hero-bg" src="~/images/hero-caza.jpg" alt="Ambiente de caza SANTICAZA" />
+        <div class="hero-overlay"></div>
+        <div style="position:relative;z-index:10;display:flex;flex-direction:column;min-height:100svh;">
+            <partial name="_Header" />
+            <div class="hero-content">
+                <p class="hero-brand animate-rise">SANTICAZA</p>
+                <h1 class="hero-title animate-rise-delay">@raffle.Subtitle</h1>
+                <p class="hero-text animate-rise-delay-2">@raffle.Description</p>
+                <div class="hero-cta animate-rise-delay-2">
+                    <a class="btn btn-accent animate-cta" href="#comprar">Comprar chances</a>
+                    <a class="btn btn-ghost" asp-controller="MisNumeros" asp-action="Index">Ver mis números</a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="section">
+        <div class="grid-2" style="align-items:end;">
+            <div>
+                <span class="badge">SORTEO EN VIVO</span>
+                <h2 class="font-display" style="font-size:2rem;margin:0.8rem 0 0.4rem;">@raffle.PrizeTitle</h2>
+                <p style="color:var(--text-muted);max-width:36rem;">@raffle.PrizeDescription</p>
+                <p>Fecha del sorteo: <span style="color:var(--accent)">@FormatHelper.FormatDateTimeAr(raffle.DrawAt)</span></p>
+            </div>
+            <div class="panel">
+                <p style="color:var(--text-muted);margin:0 0 0.7rem;">Falta para el gran día</p>
+                <div class="countdown" id="countdown" data-target="@raffle.DrawAt">
+                    <div class="countdown-item"><strong data-unit="days">00</strong><span>DÍAS</span></div>
+                    <div class="countdown-item"><strong data-unit="hours">00</strong><span>HS</span></div>
+                    <div class="countdown-item"><strong data-unit="minutes">00</strong><span>MIN</span></div>
+                    <div class="countdown-item"><strong data-unit="seconds">00</strong><span>SEG</span></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="grid-2" style="margin-top:1.5rem;">
+            <div class="media-card">
+                <img src="~/images/hero-caza.jpg" alt="Ambiente SANTICAZA" />
+                <div class="caption">
+                    <div style="font-size:0.7rem;letter-spacing:0.18em;text-transform:uppercase;">Premio destacado</div>
+                    <div>@raffle.PrizeTitle</div>
+                </div>
+            </div>
+            <div class="media-card">
+                <img src="@(raffle.ImageUrl ?? "/images/premio-kit.jpg")" alt="@raffle.PrizeTitle" />
+                <div class="caption">Empezamos nuevo sorteo</div>
+            </div>
+        </div>
+        <p style="color:var(--text-muted);margin-top:0.9rem;">
+            Chances vendidas: @raffle.SoldTickets.ToString("N0") / @raffle.TotalTickets.ToString("N0")
+        </p>
+    </section>
+
+    <section class="section" id="comprar">
+        <div class="grid-2">
+            <div class="panel">
+                <h2 class="font-display" style="font-size:1.8rem;margin:0;">Elegí tu pack</h2>
+                <p style="color:var(--text-muted);margin:0.35rem 0 0;">Más chances, más oportunidades de llevarte el kit SANTICAZA.</p>
+                <div class="pack-list" id="pack-list">
+                    @foreach (var pack in raffle.Packages)
+                    {
+                        var active = selectedPackage?.Id == pack.Id;
+                        <button type="button"
+                                class="pack-btn @(active ? "active" : "")"
+                                data-pack-id="@pack.Id"
+                                data-label="@pack.Label"
+                                data-price="@FormatHelper.FormatArs(pack.PriceCents)">
+                            @if (pack.Popular)
+                            {
+                                <span class="pack-popular">MÁS POPULAR</span>
+                            }
+                            <span>@pack.Label</span>
+                            <span class="price">@FormatHelper.FormatArs(pack.PriceCents)</span>
+                        </button>
+                    }
+                </div>
+            </div>
+
+            <form class="panel" asp-action="Comprar" method="post">
+                @Html.AntiForgeryToken()
+                <h2 class="font-display" style="font-size:1.8rem;margin:0;">Datos del comprador</h2>
+                <p style="color:var(--text-muted);margin:0.35rem 0 0;">Completá tus datos para recibir tus números por email.</p>
+
+                <input type="hidden" name="PackageId" id="PackageId" value="@(selectedPackage?.Id ?? 0)" />
+
+                <div class="form-grid">
+                    <div>
+                        <label class="label" for="FirstName">Nombre</label>
+                        <input class="field" id="FirstName" name="FirstName" placeholder="Juan" required />
+                    </div>
+                    <div>
+                        <label class="label" for="LastName">Apellido</label>
+                        <input class="field" id="LastName" name="LastName" placeholder="Pérez" required />
+                    </div>
+                    <div>
+                        <label class="label" for="Dni">DNI</label>
+                        <input class="field" id="Dni" name="Dni" placeholder="12345678" required />
+                    </div>
+                    <div>
+                        <label class="label" for="BirthDate">Fecha de nacimiento</label>
+                        <input class="field" id="BirthDate" name="BirthDate" placeholder="DD/MM/AAAA" required />
+                    </div>
+                    <div>
+                        <label class="label" for="Email">Email</label>
+                        <input class="field" id="Email" name="Email" type="email" placeholder="tu@email.com" required />
+                    </div>
+                    <div>
+                        <label class="label" for="Phone">Teléfono</label>
+                        <div class="phone-row">
+                            <div class="field phone-code">ARG +54</div>
+                            <input class="field" id="Phone" name="Phone" placeholder="11 2345 6789" required />
+                        </div>
+                    </div>
+                </div>
+
+                <label class="terms">
+                    <input type="checkbox" name="AcceptTerms" value="true" required />
+                    <span>Acepto los <a asp-controller="Terminos" asp-action="Index" style="color:var(--accent);text-decoration:underline;">Términos y Condiciones</a></span>
+                </label>
+
+                <p style="color:var(--text-muted);margin-top:1rem;" id="summary">
+                    Vas a comprar <span id="summary-label">@(selectedPackage?.Label)</span> por
+                    <span style="color:var(--accent)" id="summary-price">@(selectedPackage is null ? "" : FormatHelper.FormatArs(selectedPackage.PriceCents))</span>
+                </p>
+
+                @if (TempData["Error"] is string error)
+                {
+                    <div class="alert">@error</div>
+                }
+
+                <div style="margin-top:1.2rem;display:flex;flex-wrap:wrap;gap:0.8rem;align-items:center;justify-content:space-between;">
+                    <div style="font-size:0.75rem;letter-spacing:0.16em;text-transform:uppercase;color:var(--text-muted);">Pago seguro · Mercado Pago</div>
+                    <button type="submit" class="btn btn-accent animate-cta">Comprar ahora</button>
+                </div>
+            </form>
+        </div>
+    </section>
+
+    <section class="section" style="padding-top:0;">
+        <div class="trust">
+            <div class="trust-item"><span class="trust-icon">✓</span><span>Envíos a todo el país</span></div>
+            <div class="trust-item"><span class="trust-icon">✓</span><span>Pagos seguros</span></div>
+            <div class="trust-item"><span class="trust-icon">✓</span><span>Sorteos exclusivos</span></div>
+            <div class="trust-item"><span class="trust-icon">✓</span><span>Atención personalizada</span></div>
+        </div>
+    </section>
+
+    <partial name="_Footer" />
+</main>
+
+@section Scripts {
+<script src="~/js/site.js" asp-append-version="true"></script>
+}

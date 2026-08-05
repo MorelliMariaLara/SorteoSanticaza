@@ -1,0 +1,48 @@
+@model List<MyNumbersResult>?
+@{
+    ViewData["Title"] = "Mis Números";
+    var q = ViewBag.Query as string ?? "";
+}
+
+<main>
+    <partial name="_Header" />
+    <section class="section" style="max-width:48rem;">
+        <h1 class="font-display" style="font-size:2.4rem;color:var(--accent);margin:0;">Mis Números</h1>
+        <p style="color:var(--text-muted);">Consultá tus chances con el email o DNI de la compra.</p>
+
+        <form method="get" style="display:flex;flex-wrap:wrap;gap:0.7rem;margin-top:1.2rem;">
+            <input class="field" style="flex:1;" name="q" value="@q" placeholder="email@ejemplo.com o DNI" required />
+            <button class="btn btn-accent" type="submit">Buscar</button>
+        </form>
+
+        @if (Model is not null)
+        {
+            <div style="margin-top:1.5rem;display:grid;gap:0.8rem;">
+                @if (Model.Count == 0)
+                {
+                    <p style="color:var(--text-muted);">No encontramos compras pagadas con esos datos.</p>
+                }
+                else
+                {
+                    @foreach (var r in Model)
+                    {
+                        <article class="panel">
+                            <div style="display:flex;justify-content:space-between;gap:0.8rem;flex-wrap:wrap;">
+                                <strong>@r.Name</strong>
+                                <span style="color:var(--accent);">@FormatHelper.FormatArs(r.AmountCents)</span>
+                            </div>
+                            <p style="color:var(--text-muted);margin:0.35rem 0 0.8rem;">@r.Chances chances · @r.Email</p>
+                            <div>
+                                @foreach (var n in r.Numbers)
+                                {
+                                    <span class="ticket">#@FormatHelper.PadTicket(n)</span>
+                                }
+                            </div>
+                        </article>
+                    }
+                }
+            </div>
+        }
+    </section>
+    <partial name="_Footer" />
+</main>

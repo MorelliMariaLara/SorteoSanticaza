@@ -1,0 +1,37 @@
+@model List<WinnerPublic>
+@{
+    ViewData["Title"] = "Ganadores";
+}
+
+<main>
+    <partial name="_Header" />
+    <section class="section" style="max-width:56rem;">
+        <h1 class="font-display" style="font-size:2.4rem;color:var(--accent);margin:0;">Ganadores</h1>
+        <p style="color:var(--text-muted);">Resultados de los sorteos en vivo de SANTICAZA.</p>
+
+        <div style="display:grid;gap:0.75rem;margin-top:1.5rem;">
+            @if (Model.Count == 0)
+            {
+                <p style="color:var(--text-muted);">Todavía no hay ganadores publicados.</p>
+            }
+            else
+            {
+                @foreach (var w in Model)
+                {
+                    <article class="panel" style="display:flex;flex-wrap:wrap;justify-content:space-between;gap:0.8rem;align-items:center;">
+                        <div>
+                            <div style="font-size:0.7rem;letter-spacing:0.16em;text-transform:uppercase;color:var(--text-muted);">@w.RaffleTitle</div>
+                            <h2 style="margin:0.25rem 0;">@w.WinnerName</h2>
+                            <p style="margin:0;color:var(--text-muted);">@w.PrizeLabel</p>
+                        </div>
+                        <div style="text-align:right;">
+                            <div class="font-display" style="font-size:1.6rem;color:var(--accent);">#@FormatHelper.PadTicket(w.TicketNumber)</div>
+                            <div style="font-size:0.75rem;color:var(--text-muted);">@FormatHelper.FormatDateTimeAr(w.DrawnAt)</div>
+                        </div>
+                    </article>
+                }
+            }
+        </div>
+    </section>
+    <partial name="_Footer" />
+</main>

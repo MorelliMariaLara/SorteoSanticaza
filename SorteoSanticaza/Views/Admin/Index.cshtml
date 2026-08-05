@@ -1,0 +1,58 @@
+@model List<AdminOrderRow>
+@{
+    ViewData["Title"] = "Panel Admin";
+}
+
+<main class="section">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:0.8rem;flex-wrap:wrap;">
+        <h1 class="font-display" style="font-size:2rem;color:var(--accent);margin:0;">Panel Admin</h1>
+        <a class="btn btn-outline" asp-action="Index">Actualizar</a>
+    </div>
+
+    <form asp-action="PublicarGanador" method="post" class="panel" style="margin-top:1.2rem;display:grid;gap:0.7rem;">
+        @Html.AntiForgeryToken()
+        <div class="form-grid">
+            <input class="field" name="ticketNumber" type="number" placeholder="Número ganador" required />
+            <input class="field" name="prizeLabel" value="Premio principal" required />
+        </div>
+        <button class="btn btn-accent" type="submit">Publicar ganador</button>
+        @if (TempData["Message"] is string msg)
+        {
+            <p style="color:var(--text-muted);margin:0;">@msg</p>
+        }
+    </form>
+
+    <div class="table-wrap" style="margin-top:1.4rem;">
+        <table>
+            <thead>
+                <tr>
+                    <th>Cliente</th>
+                    <th>Estado</th>
+                    <th>Monto</th>
+                    <th>Números</th>
+                </tr>
+            </thead>
+            <tbody>
+            @foreach (var o in Model)
+            {
+                <tr>
+                    <td>
+                        <div><strong>@o.Name</strong></div>
+                        <div style="color:var(--text-muted);font-size:0.8rem;">@o.Email · DNI @o.Dni</div>
+                    </td>
+                    <td style="text-transform:uppercase;font-size:0.75rem;">@o.Status</td>
+                    <td>
+                        @FormatHelper.FormatArs(o.AmountCents)
+                        <div style="color:var(--text-muted);font-size:0.8rem;">@o.Chances chances</div>
+                    </td>
+                    <td style="color:var(--accent);">
+                        @(string.IsNullOrWhiteSpace(o.TicketNumbers)
+                            ? "—"
+                            : string.Join(" ", o.TicketNumbers.Split(',').Select(n => "#" + FormatHelper.PadTicket(int.Parse(n)))))
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+</main>
