@@ -1,0 +1,41 @@
+@model PaidOrderView?
+@{
+    ViewData["Title"] = "Pago confirmado";
+}
+
+<main>
+    <partial name="_Header" />
+    <section class="section" style="max-width:42rem;">
+        <p style="font-size:0.75rem;letter-spacing:0.18em;text-transform:uppercase;color:var(--accent);margin:0;">Pago confirmado</p>
+        <h1 class="font-display" style="font-size:2.4rem;margin:0.4rem 0 0;">¡Ya estás participando!</h1>
+
+        @if (Model is null || Model.Status != "paid")
+        {
+            <p style="color:var(--text-muted);">No encontramos una orden paga con ese identificador.</p>
+        }
+        else
+        {
+            <div class="panel" style="margin-top:1.3rem;">
+                <p style="margin:0;">@Model.FirstName @Model.LastName</p>
+                <p style="color:var(--text-muted);margin:0.35rem 0 0.9rem;">
+                    @Model.Chances chances · @FormatHelper.FormatArs(Model.AmountCents)
+                </p>
+                <div>
+                    @foreach (var n in Model.Tickets)
+                    {
+                        <span class="ticket">#@FormatHelper.PadTicket(n)</span>
+                    }
+                </div>
+                <p style="color:var(--text-muted);margin:1rem 0 0;font-size:0.9rem;">
+                    Guardá estos números. También podés consultarlos luego en Mis Números.
+                </p>
+            </div>
+        }
+
+        <div style="display:flex;flex-wrap:wrap;gap:0.7rem;margin-top:1.2rem;">
+            <a class="btn btn-accent" asp-controller="Home" asp-action="Index">Volver al sorteo</a>
+            <a class="btn btn-outline" asp-controller="MisNumeros" asp-action="Index">Mis Números</a>
+        </div>
+    </section>
+    <partial name="_Footer" />
+</main>

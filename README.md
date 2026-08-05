@@ -1,61 +1,48 @@
 # Sorteo SANTICAZA
 
-Plataforma web + API para vender chances de sorteos de **SANTICAZA**, inspirada en el flujo de compra de [Pesca Urbana /sorteo](https://pescaurbana.com/sorteo/).
+Solución web **ASP.NET Core MVC (.NET 8)** para vender chances de sorteos de SANTICAZA.
+
+## Abrir y ejecutar en Visual Studio
+
+1. Abrí el archivo de solución:
+   - `SorteoSanticaza.sln`
+2. Marcá `SorteoSanticaza` como **proyecto de inicio** (ya es el único proyecto).
+3. Presioná **F5** o **Ctrl+F5**.
+4. Se abre en `http://localhost:5165`.
+
+También podés ejecutar desde terminal:
+
+```bash
+dotnet restore
+dotnet run --project SorteoSanticaza
+```
 
 ## Qué incluye
 
-- Landing de sorteo con hero, countdown, packs y checkout
-- API REST para raffle, órdenes, pagos (modo demo), mis números, ganadores y admin
-- Asignación aleatoria de números al confirmar pago
-- Páginas: inicio, Mis Números, Ganadores, Términos, Admin, pago exitoso
-- Persistencia SQLite (`data/santicaza.db`)
+- Landing de sorteo (hero, countdown, packs, checkout)
+- API REST en `/api/*`
+- Mis Números, Ganadores, Términos, Admin, pago exitoso
+- SQLite local en `SorteoSanticaza/App_Data/santicaza.db`
+- Modo pago demo (asigna números al confirmar)
 
-## Stack
+## Admin
 
-- Next.js (App Router) + TypeScript + Tailwind
-- better-sqlite3
-- Zod para validación
+- URL: `/Admin`
+- Password: `santicaza-admin` (configurable en `appsettings.json` → `AdminPassword`)
 
-## Desarrollo
+## API
 
-```bash
-npm install
-cp .env.example .env.local
-npm run dev
-```
+- `GET /api/raffle`
+- `POST /api/orders`
+- `POST /api/payments/checkout`
+- `GET /api/my-numbers?q=`
+- `GET /api/winners`
+- `POST /api/admin/login`
+- `GET /api/admin/orders`
 
-Abrí [http://localhost:3000](http://localhost:3000).
+## Requisitos
 
-### Variables
+- Visual Studio 2022 (o Rider) con workload **ASP.NET and web development**
+- .NET 8 SDK
 
-| Variable | Descripción |
-|---|---|
-| `ADMIN_PASSWORD` | Password del panel `/admin` |
-| `NEXT_PUBLIC_APP_URL` | URL base de la app |
-| `PAYMENT_MODE` | `demo` (default) confirma pago y asigna números |
-| `MERCADOPAGO_ACCESS_TOKEN` | Token real de MP (opcional; listo para Preference API) |
-
-## API principal
-
-- `GET /api/raffle` — sorteo activo + packs
-- `POST /api/orders` — crea orden pendiente
-- `POST /api/payments/checkout` — checkout (demo o MP)
-- `GET /api/my-numbers?q=` — consulta por email/DNI
-- `GET /api/winners` — listado público
-- `POST /api/admin/login` — cookie de admin
-- `GET /api/admin/orders` — órdenes (admin)
-- `POST /api/admin/winners` — publicar ganador (admin)
-
-## Flujo de compra
-
-1. El usuario elige un pack y completa datos
-2. `POST /api/orders` crea la orden
-3. `POST /api/payments/checkout` confirma el pago (demo) y asigna números
-4. Redirección a `/pago/exito?order=<uuid>`
-
-## Producción
-
-```bash
-npm run build
-npm start
-```
+No usa npm/Node.js.
